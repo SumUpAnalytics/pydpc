@@ -19,7 +19,7 @@ import numpy as _np
 cimport numpy as _np
 
 cdef extern from "_core.h":
-    void _get_distances(double *points, int npoints, int ndim, double *distances)
+    void _get_distances(double *points, int npoints, int ndim, double *distances, int metric)
     double _get_kernel_size(double *distances, int npoints, double fraction)
     void _get_density(double kernel_size, double *distances, int npoints, double *density)
     void _get_delta_and_neighbour(
@@ -34,14 +34,15 @@ cdef extern from "_core.h":
         int border_only, double *border_density,
         double *density, int *membership, int *border_member, int npoints, int *halo)
 
-def get_distances(_np.ndarray[double, ndim=2, mode="c"] points not None):
+def get_distances(_np.ndarray[double, ndim=2, mode="c"] points not None, int metric):
     npoints = points.shape[0]
     ndim = points.shape[1]
     distances = _np.zeros(shape=(npoints, npoints), dtype=_np.float64)
     _get_distances(
         <double*> _np.PyArray_DATA(points),
         npoints, ndim,
-        <double*> _np.PyArray_DATA(distances))
+        <double*> _np.PyArray_DATA(distances),
+        metric)
     return distances
 
 def get_kernel_size(_np.ndarray[double, ndim=2, mode="c"] distances not None, fraction):
