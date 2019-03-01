@@ -22,29 +22,39 @@ from . import core as _core
 __all__ = ['Cluster']
 
 class Distances(object):
-    def __init__(self, points):
+    def __init__(self, points, metric):
+        
+        # ADDED: we add the possibility for the user to chose the euclidean or
+        # the cosine distance, with 0 -> euclidean, 1 -> cosine
+        if metric == 'euclidean':
+            self.metric = 0
+        elif metric == 'cosine':
+            self.metric = 1
+        else:
+            raise ValueError("Metric must be 'euclidean' or 'cosine'")
+                             
         self.points = points
         self.npoints = self.points.shape[0]
-        self.distances = _core.get_distances(self.points)
+        self.distances = _core.get_distances(self.points, self.metric)
         self.max_distance = self.distances.max()
 
 class Density(Distances):
-    def __init__(self, points, fraction):
-        super(Density, self).__init__(points)
+    def __init__(self, points, fraction, metric):
+        super(Density, self).__init__(points, metric)
         self.fraction = fraction
         self.kernel_size = _core.get_kernel_size(self.distances, self.fraction)
         self.density = _core.get_density(self.distances, self.kernel_size)
 
 class Graph(Density):
-    def __init__(self, points, fraction):
-        super(Graph, self).__init__(points, fraction)
+    def __init__(self, points, fraction, metric):
+        super(Graph, self).__init__(points, fraction, metric)
         self.order = _np.ascontiguousarray(_np.argsort(self.density).astype(_np.intc)[::-1])
         self.delta, self.neighbour = _core.get_delta_and_neighbour(
             self.order, self.distances, self.max_distance)
 
 class Cluster(Graph):
-    def __init__(self, points, fraction=0.02, autoplot=True):
-        super(Cluster, self).__init__(points, fraction)
+    def __init__(self, points, fraction=0.02, metric = 'euclidean', autoplot=True):
+        super(Cluster, self).__init__(points, fraction, metric)
         self.autoplot = autoplot
         if self.autoplot:
             self.draw_decision_graph()
