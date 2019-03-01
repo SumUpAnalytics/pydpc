@@ -15,6 +15,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from sklearn.metrics.pairwise import cosine_distances as skcosine_distances
+from sklearn.metrics.pairwise import euclidean_distances as skeuclidean_distances
+from scipy.sparse import issparse
 import numpy as _np
 import matplotlib.pyplot as _plt
 from . import core as _core
@@ -35,7 +38,17 @@ class Distances(object):
                              
         self.points = points
         self.npoints = self.points.shape[0]
-        self.distances = _core.get_distances(self.points, self.metric)
+        
+        # If the matrix is not sparse, we use the c++ core to compute the pairwise distances
+        if not issparse(self.points):
+            self.distances = _core.get_distances(self.points, self.metric)
+        # Else we use sklearn pairwise distances for sparse matrices. 
+        else: 
+            if self.metric: # Cosine distance:
+                self.distances = skcosine_distances(self.points)
+            else: # Euclidean distance
+                self.distances = skeuclidean_distances(self.points)
+                
         self.max_distance = self.distances.max()
 
 class Density(Distances):
