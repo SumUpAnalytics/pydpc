@@ -48,7 +48,8 @@ static double sqr(double x)
     return (x == 0.0) ? 0.0 : x * x;
 }
 
-static double distance(double *points, int n, int m, int ndim)
+// Only the name change in this one
+static double euclideanDistance(double *points, int n, int m, int ndim)
 {
     int i, o = n * ndim, p = m * ndim;
     double sum = 0.0;
@@ -56,6 +57,25 @@ static double distance(double *points, int n, int m, int ndim)
         sum += sqr(points[o + i] - points[p + i]);
     return sqrt(sum);
 }
+
+// This one is added for the cosine distance. 
+// We implement it as such = d(u,v) = 1 - <u.v> / (||u||_2 * ||v||_2)
+static double cosineDistance(double *points, int n, int m, int ndim)
+{
+    int i, o = n * ndim, p = m * ndim;
+    double sum = 0.0;
+    // need to compute the norms of u and v, we do that in the same loop
+    // we recompute the norm each time the distance is called on both vectors
+    // not the best way, but no early optimization. Maybe to change later. 
+    double unorm = 0.0, vnorm = 0.0;
+    for(i=0; i<ndim; ++i){
+        sum += points[o + i] * points[p + i];
+        unorm += sqr(points[o + i]);
+        vnorm += sqr(points[p + i]);
+    }
+    return 1.0 - (sum / (sqrt(unorm) * sqrt(vnorm)));
+}
+
 
 static void mixed_sort(double *array, int L, int R)
 /* mixed_sort() is based on examples from http://www.linux-related.de (2004) */
@@ -97,15 +117,23 @@ static void mixed_sort(double *array, int L, int R)
 *   pydpc core functions (with cython wrappers)
 ***************************************************************************************************/
 
-extern void _get_distances(double *points, int npoints, int ndim, double *distances)
+extern void _get_distances(double *points, int npoints, int ndim, double *distances, int metric)
 {
     int i, j, o;
+    // ADDED: We let the user the choice to use the euclidean distance (if metric == 0) of
+    // the cosine distance (if metric == 1). 
+    // Thus we create a function pointer to point to the right distance function
+    double (*distFcn)();
+    if(metric){distFcn = cosineDistance;}
+    else{distFcn = euclideanDistance;}
+    
     for(i=0; i<npoints-1; ++i)
     {
         o = i * npoints;
         for(j=i+1; j<npoints; ++j)
         {
-            distances[o + j] = distance(points, i, j, ndim);
+            // this is modified too, to use the pointer function
+            distances[o + j] = distFcn(points, i, j, ndim);
             distances[j * npoints + i] = distances[o + j];
         }
     }
